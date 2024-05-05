@@ -47,7 +47,7 @@ enum class CommandType : uint8_t {
 /// @brief Pattern types that can be sent to the input module
 ///
 /// This is the value that must be send as a second parameter to the Pattern command
-enum class PaternType : uint8_t {
+enum class PatternType : uint8_t {
     Percentage = 0x00,                /// Percentage pattern (needs a extra parameter)
     Gradient = 0x01,                  /// Gradient pattern (Brightness from top to bottom)
     DoubleGradient = 0x02,            /// Double gradient pattern (Brightness from the middle to top and bottom)

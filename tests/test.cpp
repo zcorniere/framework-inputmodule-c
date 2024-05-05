@@ -10,10 +10,10 @@ int main(int ac, char** av)
     Module.WriteToDevice(CommandType::Brightness, 30);
 
     for (uint8_t i = 0; i <= 100; i++) {
-        Module.WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PaternType::Percentage), i);
+        Module.WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PatternType::Percentage), i);
         usleep(100000);
     }
-    Module.WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PaternType::ZigZag));
+    Module.WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PatternType::ZigZag));
     Module.WriteToDevice(CommandType::Animate, true);
     return 0;
 }
