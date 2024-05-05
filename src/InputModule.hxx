@@ -42,6 +42,7 @@ public:
     virtual bool IsValid() const = 0;
 
     template <typename... ArgsType>
+    requires(std::is_convertible_v<ArgsType, uint8_t> && ...)
     /// Send a command to the device
     ///
     /// @return >= 0 on success, -1 on error
