@@ -1,25 +1,31 @@
 #include "InputModule.hxx"
 
-struct InvalidInputStruct {
-    int somehting;
-};
-
-int main(int ac, char** av)
+template <typename... ModulesType>
+void SendTestCommand(ModulesType... Modules)
 {
     using namespace framework;
 
-    InputModule Module(InputModuleType::LEDMatrix, "/dev/ttyACM0");
-    Module.WriteToDevice(CommandType::Sleep, false);
-    Module.WriteToDevice(CommandType::Animate, false);
-    Module.WriteToDevice(CommandType::Brightness, 30);
+    (Modules->WriteToDevice(CommandType::Sleep, false), ...);
+    (Modules->WriteToDevice(CommandType::Animate, false), ...);
+    (Modules->WriteToDevice(CommandType::Brightness, 30), ...);
 
     Commands::Payload_Pattern PatternCommand(PatternType::Percentage);
     for (uint8_t i = 0; i <= 100; i++) {
         PatternCommand.Extra = i;
-        Module.WriteToDevice(PatternCommand);
+        (Modules->WriteToDevice(PatternCommand), ...);
         usleep(100000);
     }
-    Module.WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PatternType::ZigZag));
-    Module.WriteToDevice(CommandType::Animate, true);
+    (Modules->WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PatternType::ZigZag)), ...);
+    (Modules->WriteToDevice(CommandType::Animate, true), ...);
+}
+
+int main(int ac, char** av)
+{
+    framework::InputModuleManager Manager;
+
+    framework::IInputModule* const Module = Manager.GetInputModule(framework::InputModuleType::LEDMatrix, 0);
+    framework::IInputModule* const Module2 = Manager.GetInputModule(framework::InputModuleType::LEDMatrix, 1);
+
+    SendTestCommand(Module, Module2);
     return 0;
 }

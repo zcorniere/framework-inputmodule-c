@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <cstring>
 #include <fcntl.h>
+#include <memory>
 #include <string>
 #include <unistd.h>
+#include <unordered_map>
 #include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -119,6 +121,8 @@ public:
     {
     }
 
+    virtual ~IInputModule() = default;
+
     /// Is the device valid
     virtual bool IsValid() const = 0;
 
@@ -170,7 +174,34 @@ private:
     const InputModuleType Type;
 };
 
+class IInputModuleManager
+{
+public:
+    /// Get an input module of the requested type
+    ///
+    /// @param Type The type of the input module
+    /// @param Index The index of the input module of the requested type, like if there are multiple LED Matrix
+    /// @return A pointer to the input module, or nullptr if the input module is not available. The pointer is owned by
+    /// the Manager and should not be deleted
+    virtual IInputModule* GetInputModule(InputModuleType Type, int Index = 0) = 0;
+
+    /// Check if an input module of the requested type is available
+    ///
+    /// @param Type The type of the input module
+    /// @return The number of input module is available 0 if none, -1 if there were an error type is not supported
+    virtual int IsTypeOfInputModuleAvailable(InputModuleType Type) const = 0;
+};
+}    // namespace framework
+
+////////////////////////////////////////
+// Platform Implementation
+////////////////////////////////////////
 #if defined(INPUTMODULE_PLATFORM_LINUX)
+
+    #include <libudev.h>
+
+namespace framework
+{
 
 class InputModuleLinux final : public IInputModule
 {
@@ -179,7 +210,7 @@ public:
         : IInputModule(Type), DeviceFD(open(FileDevicePath.c_str(), O_RDWR | O_NOCTTY))
     {
     }
-    ~InputModuleLinux()
+    virtual ~InputModuleLinux()
     {
         if (DeviceFD > 0) {
             close(DeviceFD);
@@ -201,10 +232,109 @@ private:
     const int DeviceFD = 0;
 };
 
-using InputModule = InputModuleLinux;
+class InputModuleManagerLinux final : public IInputModuleManager
+{
+public:
+    InputModuleManagerLinux()
+    {
+        // #TODO smart pointer with custom deleter
+        struct udev* UdevContext = udev_new();
+        INPUTMODULE_ASSERT(UdevContext != nullptr);
+
+        // We list every tty udev device
+        struct udev_enumerate* enumerate = udev_enumerate_new(UdevContext);
+        udev_enumerate_add_match_subsystem(enumerate, "tty");
+        udev_enumerate_scan_devices(enumerate);
+
+        /// Iterate over the list of devices
+        struct udev_list_entry* list = nullptr;
+        struct udev_list_entry* node = nullptr;
+        list = udev_enumerate_get_list_entry(enumerate);
+        udev_list_entry_foreach(node, list)
+        {
+            const std::string_view SysPath = udev_list_entry_get_name(node);
+            struct udev_device* const dev = udev_device_new_from_syspath(UdevContext, SysPath.data());
+
+            const char* const SerialShortPtr = udev_device_get_property_value(dev, "ID_SERIAL_SHORT");
+            if (SerialShortPtr == nullptr) {
+                udev_device_unref(dev);
+                continue;
+            }
+            const std::string_view SerialShort(SerialShortPtr);
+            if (!SerialShort.starts_with("FRA")) {
+                udev_device_unref(dev);
+                continue;    // Not a Framework device
+            }
+
+            // #HACK
+            // I don't have another device to test with and the firmware seem to have the wrong serial number
+            // for the B1 display
+            // Framework device serial number format
+            //                            FRA                - Framwork
+            //                               KDE             - C1 LED Matrix
+            //                                  BZ           - BizLink
+            //                                    01         - SKU, Default Configuration
+            //                                      00000000 - Device Identifier
+            if (!SerialShort.starts_with("FRAKDEBZ")) {
+                udev_device_unref(dev);
+                continue;    // Not a Framework device
+            }
+
+            const char* const DevName = udev_device_get_property_value(dev, "DEVNAME");
+            if (DevName == nullptr) {
+                udev_device_unref(dev);
+                continue;
+            }
+            const std::string_view DevPath(DevName);
+            if (DevPath.empty()) {
+                udev_device_unref(dev);
+                continue;
+            }
+
+            std::unique_ptr<InputModuleLinux> InputModule =
+                std::make_unique<InputModuleLinux>(InputModuleType::LEDMatrix, std::string(DevPath));
+            InputModulesMap[InputModuleType::LEDMatrix].emplace_back(std::move(InputModule));
+            udev_device_unref(dev);
+        }
+        udev_enumerate_unref(enumerate);
+        udev_unref(UdevContext);
+    }
+
+    virtual IInputModule* GetInputModule(InputModuleType Type, int Index = 0) override
+    {
+        const auto Iter = InputModulesMap.find(Type);
+        if (Iter == InputModulesMap.end()) {
+            return nullptr;
+        }
+
+        if (Index >= Iter->second.size()) {
+            return nullptr;
+        }
+        return Iter->second[Index].get();
+    }
+
+    virtual int IsTypeOfInputModuleAvailable(InputModuleType Type) const override
+    {
+        const auto Iter = InputModulesMap.find(Type);
+        if (Iter == InputModulesMap.end()) {
+            return 0;
+        }
+        return Iter->second.size();
+    }
+
+private:
+    using InputModuleList = std::vector<std::unique_ptr<IInputModule>>;
+    std::unordered_map<InputModuleType, InputModuleList> InputModulesMap;
+};
+
+using InputModuleManager = InputModuleManagerLinux;
+
+}    // namespace framework
 
 #elif defined(INPUTMODULE_PLATFORM_WINDOWS)
 
-#endif    // INPUTMODULE_PLATFORM_WINDOWS
+namespace framework
+{
+}
 
-}    // namespace framework
+#endif    // INPUTMODULE_PLATFORM_WINDOWS
