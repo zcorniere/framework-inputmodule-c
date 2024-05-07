@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <memory>
 #include <string>
-#include <unistd.h>
 #include <unordered_map>
 #include <vector>
 
@@ -335,6 +334,29 @@ using InputModuleManager = InputModuleManagerLinux;
 
 namespace framework
 {
-}
+
+class InputModuleManagerWindows final : public IInputModuleManager
+{
+public:
+    InputModuleManagerWindows()
+    {
+    }
+
+    virtual IInputModule* GetInputModule(InputModuleType Type, int Index = 0) override
+    {
+        assert(false && "Not implemented");
+        return nullptr;
+    }
+
+    virtual int IsTypeOfInputModuleAvailable(InputModuleType Type) const override
+    {
+        assert(false && "Not implemented");
+        return 0;
+    }
+};
+
+using InputModuleManager = InputModuleManagerWindows;
+
+}    // namespace framework
 
 #endif    // INPUTMODULE_PLATFORM_WINDOWS

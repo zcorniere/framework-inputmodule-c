@@ -1,5 +1,7 @@
 #include "InputModule.hxx"
 
+#include <thread>
+
 template <typename... ModulesType>
 void SendTestCommand(ModulesType... Modules)
 {
@@ -13,7 +15,7 @@ void SendTestCommand(ModulesType... Modules)
     for (uint8_t i = 0; i <= 100; i++) {
         PatternCommand.Extra = i;
         (Modules->WriteToDevice(PatternCommand), ...);
-        usleep(100000);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     (Modules->WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PatternType::ZigZag)), ...);
     (Modules->WriteToDevice(CommandType::Animate, true), ...);
