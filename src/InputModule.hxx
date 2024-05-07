@@ -345,11 +345,13 @@ public:
     virtual IInputModule* GetInputModule(InputModuleType Type, int Index = 0) override
     {
         assert(false && "Not implemented");
+        return nullptr;
     }
 
     virtual int IsTypeOfInputModuleAvailable(InputModuleType Type) const override
     {
         assert(false && "Not implemented");
+        return 0;
     }
 };
 
