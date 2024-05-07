@@ -74,17 +74,46 @@ enum class PatternType : uint8_t {
     DisplayLotusVertical = 0x07,      /// Display the string "LOTUS"
 };
 
-/// Main class representing a framework input module
-class IInputModule
+namespace Commands
 {
-private:
-    struct [[gnu::packed]] Payload {
+
+    /// @brief Header of a command to an input module
+    struct [[gnu::packed]] PayloadHeader {
         const uint8_t Magic1 = 0x32;
         const uint8_t Magic2 = 0xAC;
         CommandType Type;
         /// Extra parameter for the command need to be sent separately
     };
 
+    /// @brief Payload for the Pattern command
+    ///
+    /// Display a pattern on the input module, the pattern is defined by the PatternType enum, and the extra parameter
+    /// when needed
+    struct [[gnu::packed]] Payload_Pattern {
+        Payload_Pattern(PatternType Pattern, uint8_t Extra = 0)
+            : Header{.Type = CommandType::Pattern}, Pattern(Pattern), Extra(Extra)
+        {
+        }
+
+        const PayloadHeader Header;
+        PatternType Pattern;
+        uint8_t Extra;
+    };
+}    // namespace Commands
+
+template <typename T>
+concept TInputModulePayloadType = requires {
+    offsetof(T, Header) == 0 && requires(T t) {
+        {
+            t.Header
+        } -> std::same_as<Commands::PayloadHeader>;
+    };
+};
+
+/// Main class representing a framework input module
+class IInputModule
+{
+private:
 public:
     explicit IInputModule(InputModuleType Type): Type(Type)
     {
@@ -92,6 +121,12 @@ public:
 
     /// Is the device valid
     virtual bool IsValid() const = 0;
+
+    template <TInputModulePayloadType T>
+    int WriteToDevice(const T& Data)
+    {
+        return WriteToDevice_Internal(reinterpret_cast<const uint8_t*>(&Data), sizeof(T));
+    }
 
     template <typename... ArgsType>
     requires(std::is_convertible_v<ArgsType, uint8_t> && ...)
@@ -101,24 +136,35 @@ public:
     /// The return value contain the number of bytes the device will send back as a reply
     int WriteToDevice(CommandType Type, ArgsType... Args)
     {
+        std::vector<uint8_t> PayloadData(sizeof...(Args));
+
+        std::size_t Offset = 0;
+        ((PayloadData[Offset++] = uint8_t(Args)), ...);
+
+        WriteToDevice(Type, PayloadData);
+        return 0;
+    }
+
+    /// Send a command to the device
+    int WriteToDevice(CommandType Type, const std::vector<uint8_t>& Data)
+    {
         INPUTMODULE_ASSERT(IsValid());
-        const Payload Payload{
+        const Commands::PayloadHeader Payload{
             .Type = Type,
         };
         // Build the buffer to send to the device
         // The buffer is initialized to the be correct size
-        std::vector<uint8_t> PayloadData(sizeof(Payload) + sizeof...(Args));
+        std::vector<uint8_t> PayloadData(sizeof(Payload) + Data.size());
         std::memcpy(PayloadData.data(), &Payload, sizeof(Payload));
         /// And data are copied into it
-        std::size_t Offset = sizeof(Payload);
-        ((PayloadData[Offset++] = uint8_t(Args)), ...);
+        std::memcpy(PayloadData.data() + sizeof(Payload), Data.data(), Data.size());
 
-        WriteToDevice_Internal(PayloadData);
+        WriteToDevice_Internal(PayloadData.data(), PayloadData.size());
         return 0;
     }
 
 protected:
-    virtual int WriteToDevice_Internal(const std::vector<uint8_t>& Data) = 0;
+    virtual int WriteToDevice_Internal(const uint8_t* Data, int Size) = 0;
 
 private:
     const InputModuleType Type;
@@ -146,9 +192,9 @@ public:
     }
 
 protected:
-    virtual int WriteToDevice_Internal(const std::vector<uint8_t>& Data) override
+    virtual int WriteToDevice_Internal(const uint8_t* Data, int Size) override
     {
-        return write(DeviceFD, Data.data(), Data.size());
+        return write(DeviceFD, Data, Size);
     }
 
 private:
