@@ -385,7 +385,7 @@ public:
 
     template <typename T>
     requires TInputModulePayloadTypeWithReply<T>
-    T::Reply WriteToDevice(const T& Data = {})
+    typename T::Reply WriteToDevice(const T& Data = {})
     {
         const int WrittenData = WriteToDevice_Internal(reinterpret_cast<const uint8_t*>(&Data), sizeof(T));
         if (WrittenData < 0) {
