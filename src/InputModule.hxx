@@ -477,6 +477,8 @@ public:
 #if defined(INPUTMODULE_PLATFORM_LINUX)
 
     #include <libudev.h>
+    #include <sys/ioctl.h>
+    #include <termios.h>
 
 namespace framework
 {
@@ -485,12 +487,68 @@ class InputModuleLinux final : public IInputModule
 {
 public:
     InputModuleLinux(InputModuleType Type, const std::string& FileDevicePath)
-        : IInputModule(Type), DeviceFD(open(FileDevicePath.c_str(), O_RDWR | O_NOCTTY))
+        : IInputModule(Type), DeviceFD(open(FileDevicePath.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK))
     {
+        if (DeviceFD < 0) {
+            perror("open");
+            return;
+        }
+
+        // Exclusive access to the device
+        if (ioctl(DeviceFD, TIOCEXCL)) {
+            perror("ioctl(TIOCEXCL)");
+            return;
+        }
+
+        // Remove the Non-Blocking flag
+        if (fcntl(DeviceFD, F_SETFL, 0)) {
+            perror("fcntl");
+            return;
+        }
+
+        struct termios TTYSettings;
+        if (tcgetattr(DeviceFD, &TTYSettings)) {
+            perror("tcgetattr");
+            return;
+        }
+
+        // Set the terminal settings to be binary
+        TTYSettings.c_cflag |= CREAD | CLOCAL;
+        cfmakeraw(&TTYSettings);
+
+        if (tcsetattr(DeviceFD, TCSANOW, &TTYSettings)) {
+            perror("tcsetattr");
+            return;
+        }
+        if (tcflush(DeviceFD, TCIOFLUSH)) {
+            perror("tcflush");
+            return;
+        }
+
+        // Parity settings : None
+        TTYSettings.c_cflag &= !(PARENB | PARODD);
+        TTYSettings.c_iflag &= !INPCK;
+        TTYSettings.c_iflag |= IGNPAR;
+
+        // Flow control settings : None
+        TTYSettings.c_iflag &= !(IXON | IXOFF);
+        TTYSettings.c_cflag &= !CRTSCTS;
+
+        // Set data bit: 8
+        TTYSettings.c_cflag &= !CSIZE;
+        TTYSettings.c_cflag |= CS8;
+
+        // Set stop bit: 1
+        TTYSettings.c_cflag &= !CSTOPB;
+        cfsetspeed(&TTYSettings, B115200);
+        tcsetattr(DeviceFD, TCSANOW, &TTYSettings);
     }
     virtual ~InputModuleLinux()
     {
         if (DeviceFD > 0) {
+            if (ioctl(DeviceFD, TIOCNXCL)) {
+                perror("ioctl(TIOCNXCL)");
+            }
             close(DeviceFD);
         }
     }

@@ -1,15 +1,20 @@
 #include "InputModule.hxx"
 
 #include <iostream>
+#include <syncstream>
 #include <thread>
 
 void SendTestCommand(framework::IInputModule* const Module)
 {
     using namespace framework;
 
-    framework::Commands::Version VersionCommand;
-    framework::Commands::Version::Reply VersionReply = Module->WriteToDevice(VersionCommand);
-    std::cout << "Version: " << VersionReply.ToString() << std::endl;
+    {
+        std::osyncstream bout(std::cout);
+
+        framework::Commands::Version VersionCommand;
+        framework::Commands::Version::Reply VersionReply = Module->WriteToDevice(VersionCommand);
+        bout << "Version: " << VersionReply.ToString() << std::endl;
+    }
 
     Module->WriteToDevice(CommandType::Sleep, false);
     Module->WriteToDevice(CommandType::Animate, false);
