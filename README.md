@@ -21,7 +21,7 @@ This example code will display a progress bar from 0 to 100 and then put the mod
     Module->WriteToDevice(CommandType::Animate, false);
     Module->WriteToDevice(CommandType::Brightness, 30);
 
-    Commands::Payload_Pattern PatternCommand(PatternType::Percentage);
+    Commands::Pattern PatternCommand(PatternType::Percentage);
     for (uint8_t i = 0; i <= 100; i++) {
         PatternCommand.Extra = i;
         Module->WriteToDevice(PatternCommand);

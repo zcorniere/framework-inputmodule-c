@@ -33,23 +33,24 @@ enum class InputModuleType {
 /// Comes for the this file on the rust repo
 /// Please update the permalink if the file changes
 /// https://github.com/FrameworkComputer/inputmodule-rs/blob/13efc56a0bc0b93495195197c64e6d7bf22cd119/commands.md
+/// (the file seams outdated)
 ///
 /// - L = LED Matrix
 /// - D = B1 Display
 /// - M = C1 Minimal Module
 enum class CommandType : uint8_t {
-    Brightness = 0x00,      /// Control the brightness of the screen (L | M)
-    Pattern = 0x01,         /// Control the pattern of the screen (L)
-    Bootloader = 0x02,      /// Jump to the bootloader (L | D | M)
-    Sleep = 0x03,           /// Put the device to sleep (L | D | M)
-    GetSleep = 0x03,        /// Get the sleep status (L | D | M)
-    Animate = 0x04,         /// Scroll the pattern on the screen (L)
-    GetAnimate = 0x04,      /// Check whether animating (L)
-    Panic = 0x05,           /// Panic the device (L | D | M)
-    DrawBW = 0x06,          /// Draw a black and white image (L)
-    StageCol = 0x07,        /// Send a grayscale column (L)
-    FlushCol = 0x08,        /// Flush/draw all column buffer (L)
-    SetText = 0x09,         /// (MARKED AS DEPRECATED IN THE RUST CODE)
+    Brightness = 0x00,    /// Control the brightness of the screen (L | M)
+    Pattern = 0x01,       /// Control the pattern of the screen (L)
+    Bootloader = 0x02,    /// Jump to the bootloader (L | D | M)
+    Sleep = 0x03,         /// Put the device to sleep (L | D | M)
+    GetSleep = 0x03,      /// Get the sleep status (L | D | M)
+    Animate = 0x04,       /// Scroll the pattern on the screen (L)
+    GetAnimate = 0x04,    /// Check whether animating (L)
+    Panic = 0x05,         /// Panic the device (L | D | M)
+    DrawBW = 0x06,        /// Draw a black and white image (L)
+    StageCol = 0x07,      /// Send a grayscale column (L)
+    FlushCol = 0x08,      /// Flush/draw all column buffer (L)
+    // SetText = 0x09,         /// (MARKED AS DEPRECATED IN THE RUST CODE)
     StartGame = 0x10,       /// Start a embedded game (L)
     GameControl = 0x11,     /// Send a game command (L)
     GameStatus = 0x12,      /// Check the game status (WIP) (L)
@@ -58,7 +59,10 @@ enum class CommandType : uint8_t {
     InvertScreen = 0x15,    /// Invert the screen (D)
     SetPxColor = 0x16,      /// Set the color of a pixel (D)
     FlushFB = 0x17,         /// Flush the framebuffer (D)
-    Version = 0x20,         /// Get the version of the device (D )
+    Version = 0x20,         /// Get the version of the device (L | D)
+
+    // The following commands were found in the firmware but are not documented
+    GetBrightness = Brightness,    /// Get the brightness of the screen (L | D | M)
 };
 
 /// @brief Pattern types that can be sent to the input module
@@ -86,20 +90,271 @@ namespace Commands
         /// Extra parameter for the command need to be sent separately
     };
 
+    /// @brief Payload for the Brightness command
+    ///
+    /// Change the brightness of the input module
+    struct [[gnu::packed]] Brightness {
+        const PayloadHeader Header = {
+            .Type = CommandType::Brightness,
+        };
+        uint8_t Brightness = 0;
+    };
+
     /// @brief Payload for the Pattern command
     ///
     /// Display a pattern on the input module, the pattern is defined by the PatternType enum, and the extra parameter
     /// when needed
-    struct [[gnu::packed]] Payload_Pattern {
-        Payload_Pattern(PatternType Pattern, uint8_t Extra = 0)
-            : Header{.Type = CommandType::Pattern}, Pattern(Pattern), Extra(Extra)
-        {
-        }
-
-        const PayloadHeader Header;
-        PatternType Pattern;
-        uint8_t Extra;
+    struct [[gnu::packed]] Pattern {
+        const PayloadHeader Header = {
+            .Type = CommandType::Pattern,
+        };
+        PatternType Pattern = PatternType::Percentage;
+        uint8_t Extra = 0;
     };
+
+    /// @brief Payload for the Bootloader command
+    ///
+    /// Jump to the bootloader of the input module
+    struct [[gnu::packed]] Bootloader {
+        const PayloadHeader Header = {
+            .Type = CommandType::Bootloader,
+        };
+    };
+
+    /// @brief Payload for the Sleep command
+    ///
+    /// Put the input module to sleep or wake it up
+    struct [[gnu::packed]] Sleep {
+        /// @brief Reply for the GetSleep command
+        struct [[gnu::packed]] Reply {
+            bool Sleep = false;
+        };
+
+        const PayloadHeader Header = {
+            .Type = CommandType::Sleep,
+        };
+        bool Sleep = false;
+    };
+
+    /// @brief Payload for the GetSleep command
+    ///
+    /// Get the sleep status of the input module
+    struct [[gnu::packed]] GetSleep {
+        /// @brief Reply for the GetSleep command
+        struct [[gnu::packed]] Reply {
+            bool Sleep = false;
+        };
+
+        const PayloadHeader Header = {
+            .Type = CommandType::GetSleep,
+        };
+    };
+
+    /// @brief Payload for the Animate command
+    ///
+    /// Start or stop the animation of the input module
+    struct [[gnu::packed]] Animate {
+        const PayloadHeader Header = {
+            .Type = CommandType::Animate,
+        };
+        bool Animate = false;
+    };
+
+    /// @brief Payload for the GetAnimate command
+    ///
+    /// Get the animation status of the input module
+    struct [[gnu::packed]] GetAnimate {
+        /// @brief Reply for the GetAnimate command
+        struct [[gnu::packed]] Reply {
+            bool Animate = false;
+        };
+
+        const PayloadHeader Header = {
+            .Type = CommandType::GetAnimate,
+        };
+    };
+
+    /// @brief Payload for the Panic command
+    ///
+    /// Panic the input module
+    struct [[gnu::packed]] Panic {
+        const PayloadHeader Header = {
+            .Type = CommandType::Panic,
+        };
+    };
+
+    /// @brief Payload for the DrawBW command
+    ///
+    /// Draw a black and white image on the input module
+    struct [[gnu::packed]] DrawBW {
+        const PayloadHeader Header = {
+            .Type = CommandType::DrawBW,
+        };
+
+        // 34x9 display packed 1 bit per pixel
+        uint8_t Data[39] = {0};
+    };
+    static_assert(sizeof(DrawBW) == 39 + sizeof(PayloadHeader));
+
+    /// @brief Payload for the StageCol command
+    ///
+    /// Send a grayscale column to the input module
+    struct [[gnu::packed]] StageCol {
+        const PayloadHeader Header = {
+            .Type = CommandType::StageCol,
+        };
+
+        uint8_t Col = 0;
+        uint8_t Data[34] = {0};
+    };
+
+    /// @brief Payload for the FlushCol command
+    ///
+    /// Flush the column buffer of the input module
+    struct [[gnu::packed]] FlushCol {
+        const PayloadHeader Header = {
+            .Type = CommandType::FlushCol,
+        };
+    };
+
+    /// @brief Payload for the StartGame command
+    ///
+    /// Start a embedded game on the input module
+    struct [[gnu::packed]] StartGame {
+        const PayloadHeader Header = {
+            .Type = CommandType::StartGame,
+        };
+        uint8_t GameID = 0;
+    };
+
+    /// @brief Payload for the GameControl command
+    ///
+    /// Send a game command to the input module
+    struct [[gnu::packed]] GameControl {
+        const PayloadHeader Header = {
+            .Type = CommandType::GameControl,
+        };
+        uint8_t Control = 0;
+    };
+
+    /// @brief Payload for the GameStatus command
+    ///
+    /// Get the game status of the input module
+    struct [[gnu::packed]] GameStatus {
+        /// @brief Reply for the GameStatus command
+        // The firmware currently reply nothing for now
+        // struct [[gnu::packed]] Reply {
+        // };
+
+        const PayloadHeader Header = {
+            .Type = CommandType::GameStatus,
+        };
+    };
+
+    /// @brief Payload for the SetColor command
+    ///
+    /// Set the color of the input module
+    struct [[gnu::packed]] SetColor {
+        const PayloadHeader Header = {
+            .Type = CommandType::SetColor,
+        };
+        uint8_t R = 0;
+        uint8_t G = 0;
+        uint8_t B = 0;
+    };
+
+    /// @brief Payload for the DisplayOn command
+    ///
+    /// Turn on the display of the input module
+    struct [[gnu::packed]] DisplayOn {
+        const PayloadHeader Header = {
+            .Type = CommandType::DisplayOn,
+        };
+        bool bDisplay = true;
+    };
+
+    /// @brief Payload for the InvertScreen command
+    ///
+    /// Invert the screen of the input module
+    struct [[gnu::packed]] InvertScreen {
+        const PayloadHeader Header = {
+            .Type = CommandType::InvertScreen,
+        };
+        bool bInvert = true;
+    };
+
+    /// @brief Payload for the SetPxColor command
+    ///
+    /// Set a column of pixel
+    struct [[gnu::packed]] SetPxColor {
+        const PayloadHeader Header = {
+            .Type = CommandType::SetPxColor,
+        };
+        uint8_t Col = 0;
+        uint8_t ColorData[49] = {0};
+    };
+
+    /// @brief Payload for the FlushFB command
+    ///
+    /// Flush the framebuffer of the input module
+    struct [[gnu::packed]] FlushFB {
+        const PayloadHeader Header = {
+            .Type = CommandType::FlushFB,
+        };
+    };
+
+    /// @brief Payload for the Version command
+    ///
+    /// Get the version of the input module
+    struct [[gnu::packed]] Version {
+        /// @brief Reply for the Version command
+        struct [[gnu::packed]] Reply {
+            int GetMajor() const
+            {
+                return Major;
+            }
+            int GetMinor() const
+            {
+                return (MinorPatch & 0xF0) >> 4;
+            }
+            int GetPatch() const
+            {
+                return MinorPatch & 0x0F;
+            }
+            bool IsPreRelease() const
+            {
+                return PreRelease;
+            }
+            std::string ToString() const
+            {
+                return std::to_string(GetMajor()) + "." + std::to_string(GetMinor()) + "." +
+                       std::to_string(GetPatch()) + (PreRelease ? "-pre" : "");
+            }
+
+            uint8_t Major = 0;
+            uint8_t MinorPatch = 0;
+            bool PreRelease = 0;
+        };
+
+        const PayloadHeader Header = {
+            .Type = CommandType::Version,
+        };
+    };
+
+    /// @brief Payload for the GetBrightness command
+    ///
+    /// Get the brightness of the input module
+    struct [[gnu::packed]] GetBrightness {
+        /// @brief Reply for the GetBrightness command
+        struct [[gnu::packed]] Reply {
+            uint8_t Brightness = 0;
+        };
+
+        const PayloadHeader Header = {
+            .Type = CommandType::GetBrightness,
+        };
+    };
+
 }    // namespace Commands
 
 template <typename T>
@@ -110,6 +365,9 @@ concept TInputModulePayloadType = requires {
         } -> std::same_as<Commands::PayloadHeader>;
     };
 };
+
+template <typename T>
+concept TInputModulePayloadTypeWithReply = TInputModulePayloadType<T> && requires { typename T::Reply; };
 
 /// Main class representing a framework input module
 class IInputModule
@@ -125,8 +383,30 @@ public:
     /// Is the device valid
     virtual bool IsValid() const = 0;
 
-    template <TInputModulePayloadType T>
-    int WriteToDevice(const T& Data)
+    template <typename T>
+    requires TInputModulePayloadTypeWithReply<T>
+    T::Reply WriteToDevice(const T& Data = {})
+    {
+        const int WrittenData = WriteToDevice_Internal(reinterpret_cast<const uint8_t*>(&Data), sizeof(T));
+        if (WrittenData < 0) {
+            return typename T::Reply{};
+        }
+
+        // The firmware always return 32 bytes (ledmatrix/src/main.rs:481 response
+        // will always be a 32 bytes slice)
+        std::vector<std::uint8_t> Reply = ReadFromDevice_Internal(32);
+        if (Reply.empty()) {
+            return typename T::Reply{};
+        }
+
+        typename T::Reply ReplyData;
+        std::memcpy(&ReplyData, Reply.data(), sizeof(typename T::Reply));
+        return ReplyData;
+    }
+
+    template <typename T>
+    requires TInputModulePayloadType<T>
+    int WriteToDevice(const T& Data = {})
     {
         return WriteToDevice_Internal(reinterpret_cast<const uint8_t*>(&Data), sizeof(T));
     }
@@ -136,7 +416,7 @@ public:
     /// Send a command to the device
     ///
     /// @return >= 0 on success, -1 on error
-    /// The return value contain the number of bytes the device will send back as a reply
+    /// The return value contain the number of bytes written to the device
     int WriteToDevice(CommandType Type, ArgsType... Args)
     {
         std::vector<uint8_t> PayloadData(sizeof...(Args));
@@ -144,8 +424,7 @@ public:
         std::size_t Offset = 0;
         ((PayloadData[Offset++] = uint8_t(Args)), ...);
 
-        WriteToDevice(Type, PayloadData);
-        return 0;
+        return WriteToDevice(Type, PayloadData);
     }
 
     /// Send a command to the device
@@ -162,12 +441,12 @@ public:
         /// And data are copied into it
         std::memcpy(PayloadData.data() + sizeof(Payload), Data.data(), Data.size());
 
-        WriteToDevice_Internal(PayloadData.data(), PayloadData.size());
-        return 0;
+        return WriteToDevice_Internal(PayloadData.data(), PayloadData.size());
     }
 
 protected:
-    virtual int WriteToDevice_Internal(const uint8_t* Data, int Size) = 0;
+    virtual int WriteToDevice_Internal(const uint8_t* Data, const int Size) = 0;
+    virtual std::vector<uint8_t> ReadFromDevice_Internal(const int ExpectedSize) = 0;
 
 private:
     const InputModuleType Type;
@@ -180,8 +459,8 @@ public:
     ///
     /// @param Type The type of the input module
     /// @param Index The index of the input module of the requested type, like if there are multiple LED Matrix
-    /// @return A pointer to the input module, or nullptr if the input module is not available. The pointer is owned by
-    /// the Manager and should not be deleted
+    /// @return A pointer to the input module, or nullptr if the input module is not available. The pointer is owned
+    /// by the Manager and should not be deleted
     virtual IInputModule* GetInputModule(InputModuleType Type, int Index = 0) = 0;
 
     /// Check if an input module of the requested type is available
@@ -222,9 +501,16 @@ public:
     }
 
 protected:
-    virtual int WriteToDevice_Internal(const uint8_t* Data, int Size) override
+    virtual int WriteToDevice_Internal(const uint8_t* Data, const int Size) override
     {
         return write(DeviceFD, Data, Size);
+    }
+
+    virtual std::vector<uint8_t> ReadFromDevice_Internal(const int ExpectedSize) override
+    {
+        std::vector<uint8_t> Buffer(ExpectedSize);
+        read(DeviceFD, Buffer.data(), ExpectedSize);
+        return Buffer;
     }
 
 private:
