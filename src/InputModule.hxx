@@ -97,7 +97,7 @@ namespace Commands
         const PayloadHeader Header = {
             .Type = CommandType::Brightness,
         };
-        uint8_t Brightness = 0;
+        uint8_t BrightnessValue = 0;
     };
 
     /// @brief Payload for the Pattern command
@@ -108,7 +108,7 @@ namespace Commands
         const PayloadHeader Header = {
             .Type = CommandType::Pattern,
         };
-        PatternType Pattern = PatternType::Percentage;
+        PatternType PatternType = PatternType::Percentage;
         uint8_t Extra = 0;
     };
 
@@ -127,13 +127,13 @@ namespace Commands
     struct [[gnu::packed]] Sleep {
         /// @brief Reply for the GetSleep command
         struct [[gnu::packed]] Reply {
-            bool Sleep = false;
+            bool bIsSleeping = false;
         };
 
         const PayloadHeader Header = {
             .Type = CommandType::Sleep,
         };
-        bool Sleep = false;
+        bool bShouldSleeping = false;
     };
 
     /// @brief Payload for the GetSleep command
@@ -142,7 +142,7 @@ namespace Commands
     struct [[gnu::packed]] GetSleep {
         /// @brief Reply for the GetSleep command
         struct [[gnu::packed]] Reply {
-            bool Sleep = false;
+            bool bIsSleeping = false;
         };
 
         const PayloadHeader Header = {
@@ -157,7 +157,7 @@ namespace Commands
         const PayloadHeader Header = {
             .Type = CommandType::Animate,
         };
-        bool Animate = false;
+        bool bShouldAnimate = false;
     };
 
     /// @brief Payload for the GetAnimate command
@@ -166,7 +166,7 @@ namespace Commands
     struct [[gnu::packed]] GetAnimate {
         /// @brief Reply for the GetAnimate command
         struct [[gnu::packed]] Reply {
-            bool Animate = false;
+            bool bIsAnimating = false;
         };
 
         const PayloadHeader Header = {

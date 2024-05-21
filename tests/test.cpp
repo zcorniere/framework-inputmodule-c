@@ -21,7 +21,7 @@ void SendTestCommand(framework::IInputModule* const Module)
     Module->WriteToDevice(CommandType::Brightness, 30);
 
     Commands::Pattern PatternCommand{
-        .Pattern = PatternType::Percentage,
+        .PatternType = PatternType::Percentage,
     };
     for (uint8_t i = 0; i <= 100; i++) {
         PatternCommand.Extra = i;
@@ -32,24 +32,24 @@ void SendTestCommand(framework::IInputModule* const Module)
     Commands::GetBrightness::Reply BrightnessReply = Module->WriteToDevice<Commands::GetBrightness>();
     for (int i = 0; i < 3; i++) {
         Commands::Brightness BrightnessCommand{
-            .Brightness = 0,
+            .BrightnessValue = 0,
         };
         Module->WriteToDevice(BrightnessCommand);
         std::this_thread::sleep_for(std::chrono::milliseconds(120));
-        BrightnessCommand.Brightness = BrightnessReply.Brightness;
+        BrightnessCommand.BrightnessValue = BrightnessReply.Brightness;
         Module->WriteToDevice(BrightnessCommand);
         std::this_thread::sleep_for(std::chrono::milliseconds(120));
     }
 
     Module->WriteToDevice(CommandType::Pattern, static_cast<uint8_t>(PatternType::ZigZag));
     const Commands::Brightness BrightnessPatternCommand{
-        .Brightness = 50,
+        .BrightnessValue = 50,
     };
 
     Module->WriteToDevice(BrightnessPatternCommand);
 
     const Commands::Animate AnimateCommand{
-        .Animate = true,
+        .bShouldAnimate = true,
     };
     Module->WriteToDevice(AnimateCommand);
 }
