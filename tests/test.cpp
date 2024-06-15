@@ -8,6 +8,9 @@ void SendTestCommand(framework::IInputModule* const Module)
 {
     using namespace framework;
 
+    if (!Module) {
+        return;
+    }
     {
         std::osyncstream bout(std::cout);
 
