@@ -21,7 +21,7 @@ void SendTestCommand(framework::IInputModule* const Module)
     Module->WriteToDevice(CommandType::Brightness, 30);
 
     Commands::Pattern PatternCommand{
-        .PatternType = PatternType::Percentage,
+        .Type = PatternType::Percentage,
     };
     for (uint8_t i = 0; i <= 100; i++) {
         PatternCommand.Extra = i;

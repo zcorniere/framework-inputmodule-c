@@ -108,7 +108,7 @@ namespace Commands
         const PayloadHeader Header = {
             .Type = CommandType::Pattern,
         };
-        PatternType PatternType = PatternType::Percentage;
+        PatternType Type = PatternType::Percentage;
         uint8_t Extra = 0;
     };
 
