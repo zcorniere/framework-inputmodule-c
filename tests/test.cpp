@@ -1,8 +1,11 @@
 #include "InputModule.hxx"
 
+#include <chrono>
 #include <iostream>
 #include <syncstream>
 #include <thread>
+
+using namespace std::chrono_literals;
 
 void SendTestCommand(framework::IInputModule* const Module)
 {
@@ -56,7 +59,7 @@ void SendTestCommand(framework::IInputModule* const Module)
     };
     Module->WriteToDevice(AnimateCommand);
 
-    sleep(10);
+    std::this_thread::sleep_for(10s);
     AnimateCommand.bShouldAnimate = false;
     Module->WriteToDevice(AnimateCommand);
 
