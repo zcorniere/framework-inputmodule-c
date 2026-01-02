@@ -360,9 +360,7 @@ namespace Commands
 template <typename T>
 concept TInputModulePayloadType = requires {
     offsetof(T, Header) == 0 && requires(T t) {
-        {
-            t.Header
-        } -> std::same_as<Commands::PayloadHeader>;
+        { t.Header } -> std::same_as<Commands::PayloadHeader>;
     };
 };
 
@@ -624,18 +622,18 @@ public:
             }
 
             const char* const DevName = udev_device_get_property_value(dev, "DEVNAME");
+            const std::size_t DevNameSize = std::strlen(DevName);
             if (DevName == nullptr) {
                 udev_device_unref(dev);
                 continue;
             }
-            const std::string_view DevPath(DevName);
-            if (DevPath.empty()) {
+            if (DevNameSize == 0) {
                 udev_device_unref(dev);
                 continue;
             }
 
             std::unique_ptr<InputModuleLinux> InputModule =
-                std::make_unique<InputModuleLinux>(InputModuleType::LEDMatrix, std::string(DevPath));
+                std::make_unique<InputModuleLinux>(InputModuleType::LEDMatrix, std::string(DevName, DevNameSize));
             InputModulesMap[InputModuleType::LEDMatrix].emplace_back(std::move(InputModule));
             udev_device_unref(dev);
         }
