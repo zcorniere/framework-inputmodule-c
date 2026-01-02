@@ -47,6 +47,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: setup cpp
+        uses: aminya/setup-cpp@v1
+        with:
+          compiler: ${{ matrix.c_compiler }}
+          vcvarsall: ${{ contains(matrix.os, 'windows' )}}
+          cmake: true
+          ninja: true
+          clangtidy: false
+          cppcheck: false
+
       - name: Install dependency like udev for linux
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y --update libudev-dev
