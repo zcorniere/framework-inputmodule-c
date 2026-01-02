@@ -26,7 +26,7 @@ void SendTestCommand(framework::IInputModule* const Module)
     Commands::Pattern PatternCommand{
         .Type = PatternType::Percentage,
     };
-    for (uint8_t i = 0; i <= 100; i++) {
+    for (int8_t i = 0; i <= 100; i++) {
         PatternCommand.Extra = i;
         Module->WriteToDevice(PatternCommand);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -51,10 +51,20 @@ void SendTestCommand(framework::IInputModule* const Module)
 
     Module->WriteToDevice(BrightnessPatternCommand);
 
-    const Commands::Animate AnimateCommand{
+    Commands::Animate AnimateCommand{
         .bShouldAnimate = true,
     };
     Module->WriteToDevice(AnimateCommand);
+
+    sleep(10);
+    AnimateCommand.bShouldAnimate = false;
+    Module->WriteToDevice(AnimateCommand);
+
+    for (int8_t i = 100; i > 0; i--) {
+        PatternCommand.Extra = i;
+        Module->WriteToDevice(PatternCommand);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 }
 
 int main(int ac, char** av)
